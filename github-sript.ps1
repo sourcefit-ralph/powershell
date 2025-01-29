@@ -16,7 +16,7 @@ do {
         }
         2 {
             Write-Warning "Checking WARP Connection Status..."
-            irm (https://link.sourcefit.info/warpstatuscheck)
+            iex (https://link.sourcefit.info/warpstatuscheck)
             Write-Host "[Connection Check Complete]" -ForegroundColor Cyan
         }
         Q { break }
