@@ -226,33 +226,43 @@ try {
             Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "Interval", "Primary (PL)", "Secondary (PL)", "Failed Pings", "Latency (ms)") -ForegroundColor Cyan
             
             # 1 Minute
+            $failed1MinPrimary = @($last1MinPrimary | Where-Object { -not $_.Success }).Count
+            $failed1MinSecondary = @($last1MinSecondary | Where-Object { -not $_.Success }).Count
             Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "1 Min", 
                 "$packetLoss1MinPrimary%", "$packetLoss1MinSecondary%", 
-                "$($last1MinPrimary | Where-Object { -not $_.Success }).Count / $($last1MinSecondary | Where-Object { -not $_.Success }).Count", 
+                "$failed1MinPrimary / $failed1MinSecondary", 
                 "$avgLatency1MinPrimary ms / $avgLatency1MinSecondary ms") -ForegroundColor Green
 
             # 5 Minutes
+            $failed5MinPrimary = @($last5MinPrimary | Where-Object { -not $_.Success }).Count
+            $failed5MinSecondary = @($last5MinSecondary | Where-Object { -not $_.Success }).Count
             Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "5 Min", 
                 "$packetLoss5MinPrimary%", "$packetLoss5MinSecondary%", 
-                "$($last5MinPrimary | Where-Object { -not $_.Success }).Count / $($last5MinSecondary | Where-Object { -not $_.Success }).Count", 
+                "$failed5MinPrimary / $failed5MinSecondary", 
                 "$avgLatency5MinPrimary ms / $avgLatency5MinSecondary ms") -ForegroundColor Green
 
             # 10 Minutes
+            $failed10MinPrimary = @($last10MinPrimary | Where-Object { -not $_.Success }).Count
+            $failed10MinSecondary = @($last10MinSecondary | Where-Object { -not $_.Success }).Count
             Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "10 Min", 
                 "$packetLoss10MinPrimary%", "$packetLoss10MinSecondary%", 
-                "$($last10MinPrimary | Where-Object { -not $_.Success }).Count / $($last10MinSecondary | Where-Object { -not $_.Success }).Count", 
+                "$failed10MinPrimary / $failed10MinSecondary", 
                 "$avgLatency10MinPrimary ms / $avgLatency10MinSecondary ms") -ForegroundColor Green
 
             # 30 Minutes
+            $failed30MinPrimary = @($last30MinPrimary | Where-Object { -not $_.Success }).Count
+            $failed30MinSecondary = @($last30MinSecondary | Where-Object { -not $_.Success }).Count
             Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "30 Min", 
                 "$packetLoss30MinPrimary%", "$packetLoss30MinSecondary%", 
-                "$($last30MinPrimary | Where-Object { -not $_.Success }).Count / $($last30MinSecondary | Where-Object { -not $_.Success }).Count", 
+                "$failed30MinPrimary / $failed30MinSecondary", 
                 "$avgLatency30MinPrimary ms / $avgLatency30MinSecondary ms") -ForegroundColor Green
 
             # 60 Minutes
+            $failed60MinPrimary = @($last60MinPrimary | Where-Object { -not $_.Success }).Count
+            $failed60MinSecondary = @($last60MinSecondary | Where-Object { -not $_.Success }).Count
             Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "60 Min", 
                 "$packetLoss60MinPrimary%", "$packetLoss60MinSecondary%", 
-                "$($last60MinPrimary | Where-Object { -not $_.Success }).Count / $($last60MinSecondary | Where-Object { -not $_.Success }).Count", 
+                "$failed60MinPrimary / $failed60MinSecondary", 
                 "$avgLatency60MinPrimary ms / $avgLatency60MinSecondary ms") -ForegroundColor Green
 
             # Total
@@ -282,33 +292,42 @@ try {
     Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "Interval", "Primary (PL)", "Secondary (PL)", "Failed Pings", "Latency (ms)") -ForegroundColor Cyan
 
     # 1 Minute
+    $failed1MinPrimary = @($last1MinPrimary | Where-Object { -not $_.Success }).Count
+    $failed1MinSecondary = @($last1MinSecondary | Where-Object { -not $_.Success }).Count
     Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "1 Min", 
         "$packetLoss1MinPrimary%", "$packetLoss1MinSecondary%", 
-        "$($last1MinPrimary | Where-Object { -not $_.Success }).Count / $($last1MinSecondary | Where-Object { -not $_.Success }).Count", 
+        "$failed1MinPrimary / $failed1MinSecondary", 
         "$avgLatency1MinPrimary ms / $avgLatency1MinSecondary ms") -ForegroundColor Green
-
     # 5 Minutes
+    $failed5MinPrimary = @($last5MinPrimary | Where-Object { -not $_.Success }).Count
+    $failed5MinSecondary = @($last5MinSecondary | Where-Object { -not $_.Success }).Count
     Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "5 Min", 
         "$packetLoss5MinPrimary%", "$packetLoss5MinSecondary%", 
-        "$($last5MinPrimary | Where-Object { -not $_.Success }).Count / $($last5MinSecondary | Where-Object { -not $_.Success }).Count", 
+        "$failed5MinPrimary / $failed5MinSecondary", 
         "$avgLatency5MinPrimary ms / $avgLatency5MinSecondary ms") -ForegroundColor Green
 
     # 10 Minutes
+    $failed10MinPrimary = @($last10MinPrimary | Where-Object { -not $_.Success }).Count
+    $failed10MinSecondary = @($last10MinSecondary | Where-Object { -not $_.Success }).Count
     Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "10 Min", 
         "$packetLoss10MinPrimary%", "$packetLoss10MinSecondary%", 
-        "$($last10MinPrimary | Where-Object { -not $_.Success }).Count / $($last10MinSecondary | Where-Object { -not $_.Success }).Count", 
+        "$failed10MinPrimary / $failed10MinSecondary", 
         "$avgLatency10MinPrimary ms / $avgLatency10MinSecondary ms") -ForegroundColor Green
 
     # 30 Minutes
+    $failed30MinPrimary = @($last30MinPrimary | Where-Object { -not $_.Success }).Count
+    $failed30MinSecondary = @($last30MinSecondary | Where-Object { -not $_.Success }).Count
     Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "30 Min", 
         "$packetLoss30MinPrimary%", "$packetLoss30MinSecondary%", 
-        "$($last30MinPrimary | Where-Object { -not $_.Success }).Count / $($last30MinSecondary | Where-Object { -not $_.Success }).Count", 
+        "$failed30MinPrimary / $failed30MinSecondary", 
         "$avgLatency30MinPrimary ms / $avgLatency30MinSecondary ms") -ForegroundColor Green
 
     # 60 Minutes
+    $failed60MinPrimary = @($last60MinPrimary | Where-Object { -not $_.Success }).Count
+    $failed60MinSecondary = @($last60MinSecondary | Where-Object { -not $_.Success }).Count
     Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "60 Min", 
         "$packetLoss60MinPrimary%", "$packetLoss60MinSecondary%", 
-        "$($last60MinPrimary | Where-Object { -not $_.Success }).Count / $($last60MinSecondary | Where-Object { -not $_.Success }).Count", 
+        "$failed60MinPrimary / $failed60MinSecondary", 
         "$avgLatency60MinPrimary ms / $avgLatency60MinSecondary ms") -ForegroundColor Green
 
     # Total
