@@ -1,101 +1,78 @@
-<#
-.SYNOPSIS
-Continuous ping monitor with latency tracking and stability indicators
-#>
+# Continuous Ping Test Script with Timestamp, Color Coding, Latency, Packet Loss, and Summaries
 
-param(
-    [string]$Target,
-    [int]$Interval = 1,
-    [int]$Timeout = 1,
-    [string]$LogPath
-)
-
-# Prompt for target if not provided
-if (-not $Target) {
-    $Target = Read-Host -Prompt "Enter target hostname/IP (default: 8.8.8.8)"
-    if ([string]::IsNullOrEmpty($Target)) { $Target = "8.8.8.8" }
+# Prompt user for target destination
+$target = Read-Host "Enter the target destination (IP or hostname) [default: google.com]"
+if ([string]::IsNullOrWhiteSpace($target)) {
+    $target = "google.com"
 }
 
-# Initialize tracking
-$startTime = Get-Date
-$successCount = 0
-$failCount = 0
-$latencyHistory = @()
-$stabilityWindow = 10  # Number of pings to consider for stability
+Write-Host "Starting continuous ping test to $target..." -ForegroundColor Cyan
 
-# Header
-Write-Host "`nPing Monitor - $Target" -ForegroundColor Cyan
-Write-Host "Start Time: $($startTime.ToString('HH:mm:ss'))"
-Write-Host "Ctrl+C to stop`n"
+# Initialize counters
+$totalPings = 0
+$successCount = 0
+$failureCount = 0
+$summaryInterval = 10
+$totalLatency = 0
+$latencyList = @()
 
 try {
     while ($true) {
-        $timestamp = Get-Date -Format "HH:mm:ss"
+        # Perform ping using native ping command
+        $pingOutput = ping $target -n 1 | Select-String "Reply from" -Context 0, 0
         
-        try {
-            $ping = Test-Connection -ComputerName $Target -Count 1 -TimeoutSeconds $Timeout -ErrorAction Stop
-            $successCount++
-            $latency = $ping.ResponseTime
-            $latencyHistory += $latency
-            
-            # Keep only last 10 pings for stability calculation
-            if ($latencyHistory.Count -gt $stabilityWindow) {
-                $latencyHistory = $latencyHistory[-$stabilityWindow..-1]
+        # Get timestamp
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+        if ($pingOutput) {
+            # Extract latency from the ping output
+            if ($pingOutput -match 'time=(\d+)ms') {
+                $latency = [int]$matches[1]
+                Write-Host "[$timestamp] Ping to $target succeeded. Latency: ${latency}ms" -ForegroundColor Green
+                $successCount++
+                $totalLatency += $latency
+                $latencyList += $latency
+            } else {
+                Write-Host "[$timestamp] Ping to $target succeeded, but could not parse latency." -ForegroundColor Yellow
+                $successCount++
             }
-            
-            # Stability calculation
-            $averageLatency = [math]::Round(($latencyHistory | Measure-Object -Average).Average)
-            $stabilityStatus = if ($averageLatency -lt 150 -and $latencyHistory.Count -eq $stabilityWindow) {
-                "Stable" 
-            } else { 
-                "Calculating..." 
-            }
-            
-            $message = "$timestamp [$($latency.ToString().PadLeft(4))ms] $Target - Status: $stabilityStatus"
-            Write-Host $message -ForegroundColor Green
-        }
-        catch {
-            $failCount++
-            $message = "$timestamp [----ms] $Target - Status: Unstable"
-            Write-Host $message -ForegroundColor Red
+        } else {
+            Write-Host "[$timestamp] Ping to $target failed." -ForegroundColor Red
+            $failureCount++
         }
 
-        # Logging
-        if ($LogPath) { 
-            Add-Content -Path $LogPath -Value $message.Replace("ms] $Target - Status: ", "] ") 
+        # Increment total pings
+        $totalPings++
+
+        # Calculate packet loss percentage
+        $packetLossPercentage = if ($totalPings -gt 0) { [math]::Round(($failureCount / $totalPings) * 100, 2) } else { 0 }
+
+        # Summarize every 10 responses
+        if ($totalPings % $summaryInterval -eq 0) {
+            $averageLatency = if ($successCount -gt 0) { [math]::Round($totalLatency / $successCount, 2) } else { 0 }
+            Write-Host "`n--- Summary after $totalPings pings ---" -ForegroundColor Yellow
+            Write-Host "Successful pings: $successCount" -ForegroundColor Green
+            Write-Host "Failed pings: $failureCount" -ForegroundColor Red
+            Write-Host "Packet loss: ${packetLossPercentage}%" -ForegroundColor Magenta
+            Write-Host "Average latency: ${averageLatency}ms" -ForegroundColor Cyan
+            Write-Host "--------------------------------------`n" -ForegroundColor Yellow
         }
 
-        # Detailed stats every 10 pings
-        if (($successCount + $failCount) % 10 -eq 0) {
-            $total = $successCount + $failCount
-            $successRate = [math]::Round(($successCount / $total) * 100)
-            $currentLatency = if ($latencyHistory.Count -gt 0) { 
-                "Avg: {0}ms | Min: {1}ms | Max: {2}ms" -f (
-                    [math]::Round(($latencyHistory | Measure-Object -Average).Average),
-                    ($latencyHistory | Measure-Object -Minimum).Minimum,
-                    ($latencyHistory | Measure-Object -Maximum).Maximum
-                )
-            } else { "N/A" }
-            
-            Write-Host ("`nLast 10 pings: " + $currentLatency) -ForegroundColor Yellow
-            Write-Host ("Success Rate: {0}% | Total Attempts: {1}`n" -f $successRate, $total) -ForegroundColor Yellow
-        }
-
-        Start-Sleep -Seconds $Interval
+        # Wait for a second before the next ping
+        Start-Sleep -Seconds 1
     }
-}
-finally {
-    # Final report
-    $total = $successCount + $failCount
-    $duration = (Get-Date) - $startTime
-    
-    Write-Host "`n=== Summary ===" -ForegroundColor Cyan
-    Write-Host "Duration: $($duration.ToString('hh\:mm\:ss'))"
-    Write-Host "Total Pings: $total"
-    Write-Host "Successful: $successCount"
-    Write-Host "Failed: $failCount"
-    if ($latencyHistory.Count -gt 0) {
-        Write-Host "Average Latency: $([math]::Round(($latencyHistory | Measure-Object -Average).Average))ms"
-    }
-    if ($LogPath) { Write-Host "Log saved to: $LogPath" }
+} catch {
+    Write-Host "An error occurred: $_" -ForegroundColor Red
+} finally {
+    # Final summary
+    $finalAverageLatency = if ($successCount -gt 0) { [math]::Round($totalLatency / $successCount, 2) } else { 0 }
+    $finalPacketLossPercentage = if ($totalPings -gt 0) { [math]::Round(($failureCount / $totalPings) * 100, 2) } else { 0 }
+    Write-Host "`n--- Final Summary ---" -ForegroundColor Magenta
+    Write-Host "Total pings: $totalPings" -ForegroundColor Cyan
+    Write-Host "Successful pings: $successCount" -ForegroundColor Green
+    Write-Host "Failed pings: $failureCount" -ForegroundColor Red
+    Write-Host "Packet loss: ${finalPacketLossPercentage}%" -ForegroundColor Magenta
+    Write-Host "Average latency: ${finalAverageLatency}ms" -ForegroundColor Cyan
+    Write-Host "Latency details (last 10): $($latencyList[-10..-1] -join ', ')ms" -ForegroundColor Yellow
+    Write-Host "---------------------`n" -ForegroundColor Magenta
 }
