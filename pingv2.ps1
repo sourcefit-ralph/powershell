@@ -128,12 +128,19 @@ try {
                 [Parameter(Mandatory = $true)]
                 $data
             )
+            # Filter only successful pings with valid Latency values
             $successfulPings = $data | Where-Object { $_.Success -and $_.Latency -ne $null }
-            $totalLatency = ($successfulPings | Measure-Object -Property Latency -Sum).Sum
-            $count = $successfulPings.Count
-            if ($count -gt 0) {
+            
+            # Check if there are any successful pings
+            if ($successfulPings.Count -gt 0) {
+                # Calculate total latency and count
+                $totalLatency = ($successfulPings | Measure-Object -Property Latency -Sum).Sum
+                $count = $successfulPings.Count
+                
+                # Return the average latency, rounded to 2 decimal places
                 return [math]::Round($totalLatency / $count, 2)
             } else {
+                # If no successful pings, return 0
                 return 0
             }
         }
@@ -150,7 +157,7 @@ try {
         $avgLatency30MinPrimary = Calculate-AverageLatency -data $last30MinPrimary
         $avgLatency60MinPrimary = Calculate-AverageLatency -data $last60MinPrimary
         $avgLatencyTotalPrimary = if ($successCountPrimary -gt 0) { [math]::Round($totalLatencyPrimary / $successCountPrimary, 2) } else { 0 }
-                # Secondary Target Metrics
+        # Secondary Target Metrics
         $packetLoss1MinSecondary = Calculate-PacketLoss -data $last1MinSecondary
         $packetLoss5MinSecondary = Calculate-PacketLoss -data $last5MinSecondary
         $packetLoss10MinSecondary = Calculate-PacketLoss -data $last10MinSecondary
