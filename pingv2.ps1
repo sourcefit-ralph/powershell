@@ -4,13 +4,16 @@ $primaryTarget = Read-Host "Enter the primary target destination (IP or hostname
 if ([string]::IsNullOrWhiteSpace($primaryTarget)) {
     $primaryTarget = "google.com"
 }
+
 # Prompt user for secondary target destination
 $secondaryTarget = Read-Host "Enter the secondary target destination (IP or hostname) [default: yahoo.com]"
 if ([string]::IsNullOrWhiteSpace($secondaryTarget)) {
     $secondaryTarget = "yahoo.com"
 }
+
 Write-Host "Starting continuous ping test to primary target: $primaryTarget" -ForegroundColor Cyan
 Write-Host "Secondary target: $secondaryTarget" -ForegroundColor Cyan
+
 # Initialize counters and data structures
 $totalPings = 0
 $successCountPrimary = 0
@@ -24,6 +27,7 @@ $latencyListPrimary = @()
 $latencyListSecondary = @()
 $pingHistoryPrimary = @() # Stores timestamp, success/failure status, and latency for primary target
 $pingHistorySecondary = @() # Stores timestamp, success/failure status, and latency for secondary target
+
 try {
     while ($true) {
         # Perform ping for primary target
@@ -32,6 +36,7 @@ try {
         # Get timestamp
         $timestamp = Get-Date
         $formattedTimestamp = $timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+
         # Determine if primary ping succeeded or failed
         if ($pingOutputPrimary) {
             # Extract latency from the ping output
@@ -41,19 +46,33 @@ try {
                 $successCountPrimary++
                 $totalLatencyPrimary += $latencyPrimary
                 $latencyListPrimary += $latencyPrimary
-                $pingHistoryPrimary += @{ Timestamp = $timestamp; Success = $true; Latency = $latencyPrimary }
+                $pingHistoryPrimary += [PSCustomObject]@{
+                    Timestamp = $timestamp
+                    Success   = $true
+                    Latency   = $latencyPrimary
+                }
             } else {
                 $primaryStatus = "[$formattedTimestamp] Primary ($primaryTarget): Success, Latency=Unknown"
                 $successCountPrimary++
-                $pingHistoryPrimary += @{ Timestamp = $timestamp; Success = $true; Latency = $null }
+                $pingHistoryPrimary += [PSCustomObject]@{
+                    Timestamp = $timestamp
+                    Success   = $true
+                    Latency   = $null
+                }
             }
         } else {
             $primaryStatus = "[$formattedTimestamp] Primary ($primaryTarget): Failed"
             $failureCountPrimary++
-            $pingHistoryPrimary += @{ Timestamp = $timestamp; Success = $false; Latency = $null }
+            $pingHistoryPrimary += [PSCustomObject]@{
+                Timestamp = $timestamp
+                Success   = $false
+                Latency   = $null
+            }
         }
+
         # Perform ping for secondary target
         $pingOutputSecondary = ping $secondaryTarget -n 1 | Select-String "Reply from" -Context 0, 0
+
         # Determine if secondary ping succeeded or failed
         if ($pingOutputSecondary) {
             # Extract latency from the ping output
@@ -63,17 +82,30 @@ try {
                 $successCountSecondary++
                 $totalLatencySecondary += $latencySecondary
                 $latencyListSecondary += $latencySecondary
-                $pingHistorySecondary += @{ Timestamp = $timestamp; Success = $true; Latency = $latencySecondary }
+                $pingHistorySecondary += [PSCustomObject]@{
+                    Timestamp = $timestamp
+                    Success   = $true
+                    Latency   = $latencySecondary
+                }
             } else {
                 $secondaryStatus = "Secondary ($secondaryTarget): Success, Latency=Unknown"
                 $successCountSecondary++
-                $pingHistorySecondary += @{ Timestamp = $timestamp; Success = $true; Latency = $null }
+                $pingHistorySecondary += [PSCustomObject]@{
+                    Timestamp = $timestamp
+                    Success   = $true
+                    Latency   = $null
+                }
             }
         } else {
             $secondaryStatus = "Secondary ($secondaryTarget): Failed"
             $failureCountSecondary++
-            $pingHistorySecondary += @{ Timestamp = $timestamp; Success = $false; Latency = $null }
+            $pingHistorySecondary += [PSCustomObject]@{
+                Timestamp = $timestamp
+                Success   = $false
+                Latency   = $null
+            }
         }
+
         # Combine primary and secondary statuses into one line with selective coloring
         if ($pingOutputPrimary) {
             $primaryOutput = $primaryStatus
@@ -82,6 +114,7 @@ try {
             $primaryOutput = $primaryStatus
             $primaryColor = "Red"
         }
+
         if ($pingOutputSecondary) {
             $secondaryOutput = $secondaryStatus
             $secondaryColor = "Green"
@@ -89,12 +122,15 @@ try {
             $secondaryOutput = $secondaryStatus
             $secondaryColor = "Red"
         }
+
         # Write the output with selective coloring
         Write-Host "$primaryOutput" -ForegroundColor $primaryColor -NoNewline
         Write-Host " | " -NoNewline
         Write-Host "$secondaryOutput" -ForegroundColor $secondaryColor
+
         # Increment total pings
         $totalPings++
+
         # Calculate packet loss percentages for different time intervals (Primary)
         $currentTime = Get-Date
         $last1MinPrimary = $pingHistoryPrimary | Where-Object { ($currentTime - $_.Timestamp).TotalMinutes -le 1 }
@@ -102,12 +138,14 @@ try {
         $last10MinPrimary = $pingHistoryPrimary | Where-Object { ($currentTime - $_.Timestamp).TotalMinutes -le 10 }
         $last30MinPrimary = $pingHistoryPrimary | Where-Object { ($currentTime - $_.Timestamp).TotalMinutes -le 30 }
         $last60MinPrimary = $pingHistoryPrimary | Where-Object { ($currentTime - $_.Timestamp).TotalMinutes -le 60 }
+
         # Calculate packet loss percentages for different time intervals (Secondary)
         $last1MinSecondary = $pingHistorySecondary | Where-Object { ($currentTime - $_.Timestamp).TotalMinutes -le 1 }
         $last5MinSecondary = $pingHistorySecondary | Where-Object { ($currentTime - $_.Timestamp).TotalMinutes -le 5 }
         $last10MinSecondary = $pingHistorySecondary | Where-Object { ($currentTime - $_.Timestamp).TotalMinutes -le 10 }
         $last30MinSecondary = $pingHistorySecondary | Where-Object { ($currentTime - $_.Timestamp).TotalMinutes -le 30 }
         $last60MinSecondary = $pingHistorySecondary | Where-Object { ($currentTime - $_.Timestamp).TotalMinutes -le 60 }
+
         # Function to calculate packet loss percentage
         function Calculate-PacketLoss {
             param (
@@ -122,6 +160,7 @@ try {
                 return 0
             }
         }
+
         # Function to calculate average latency
         function Calculate-AverageLatency {
             param (
@@ -137,6 +176,7 @@ try {
                 return 0
             }
         }
+
         # Primary Target Metrics
         $packetLoss1MinPrimary = Calculate-PacketLoss -data $last1MinPrimary
         $packetLoss5MinPrimary = Calculate-PacketLoss -data $last5MinPrimary
@@ -150,7 +190,8 @@ try {
         $avgLatency30MinPrimary = Calculate-AverageLatency -data $last30MinPrimary
         $avgLatency60MinPrimary = Calculate-AverageLatency -data $last60MinPrimary
         $avgLatencyTotalPrimary = if ($successCountPrimary -gt 0) { [math]::Round($totalLatencyPrimary / $successCountPrimary, 2) } else { 0 }
-                # Secondary Target Metrics
+
+        # Secondary Target Metrics
         $packetLoss1MinSecondary = Calculate-PacketLoss -data $last1MinSecondary
         $packetLoss5MinSecondary = Calculate-PacketLoss -data $last5MinSecondary
         $packetLoss10MinSecondary = Calculate-PacketLoss -data $last10MinSecondary
@@ -163,6 +204,7 @@ try {
         $avgLatency30MinSecondary = Calculate-AverageLatency -data $last30MinSecondary
         $avgLatency60MinSecondary = Calculate-AverageLatency -data $last60MinSecondary
         $avgLatencyTotalSecondary = if ($successCountSecondary -gt 0) { [math]::Round($totalLatencySecondary / $successCountSecondary, 2) } else { 0 }
+
         # Summarize every 10 responses
         if ($totalPings % $summaryInterval -eq 0) {
             Write-Host "`n--- Summary after $totalPings pings ---" -ForegroundColor Yellow
@@ -212,6 +254,7 @@ try {
                 "$avgLatencyTotalPrimary ms / $avgLatencyTotalSecondary ms") -ForegroundColor Green
             Write-Host "--------------------------------------`n" -ForegroundColor Yellow
         }
+
         # Wait for a second before the next ping
         Start-Sleep -Seconds 1
     }
