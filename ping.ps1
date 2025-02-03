@@ -1,18 +1,21 @@
-# Continuous Ping Test Script with Timestamp, Color Coding, Latency, and Packet Loss
-# Prompt user for primary target destination
-$primaryTarget = Read-Host "Enter the primary target destination (IP or hostname) [default: google.com]"
-if ([string]::IsNullOrWhiteSpace($primaryTarget)) {
-    $primaryTarget = "google.com"
+# Continuous Ping Test Script with Timestamp, Color Coding, Latency, Packet Loss, and Log Rotation
+
+# Ensure the C:\Logs directory exists
+$logDirectory = "C:\Logs"
+if (-not (Test-Path $logDirectory)) {
+    New-Item -ItemType Directory -Path $logDirectory | Out-Null
 }
 
-# Prompt user for secondary target destination
-$secondaryTarget = Read-Host "Enter the secondary target destination (IP or hostname) [default: yahoo.com]"
-if ([string]::IsNullOrWhiteSpace($secondaryTarget)) {
-    $secondaryTarget = "yahoo.com"
+# Function to get the log file path for the current day
+function Get-LogFilePath {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$logDirectory
+    )
+    # Generate a log file name based on the current date
+    $currentDate = Get-Date -Format "yyyy-MM-dd"
+    return "$logDirectory\PingLog_$currentDate.csv"
 }
-
-Write-Host "Starting continuous ping test to primary target: $primaryTarget" -ForegroundColor Cyan
-Write-Host "Secondary target: $secondaryTarget" -ForegroundColor Cyan
 
 # Initialize counters and data structures
 $totalPings = 0
@@ -28,15 +31,36 @@ $latencyListSecondary = @()
 $pingHistoryPrimary = @() # Stores timestamp, success/failure status, and latency for primary target
 $pingHistorySecondary = @() # Stores timestamp, success/failure status, and latency for secondary target
 
+# Prompt user for primary target destination
+$primaryTarget = Read-Host "Enter the primary target destination (IP or hostname) [default: google.com]"
+if ([string]::IsNullOrWhiteSpace($primaryTarget)) {
+    $primaryTarget = "google.com"
+}
+
+# Prompt user for secondary target destination
+$secondaryTarget = Read-Host "Enter the secondary target destination (IP or hostname) [default: yahoo.com]"
+if ([string]::IsNullOrWhiteSpace($secondaryTarget)) {
+    $secondaryTarget = "yahoo.com"
+}
+
+Write-Host "Starting continuous ping test to primary target: $primaryTarget" -ForegroundColor Cyan
+Write-Host "Secondary target: $secondaryTarget" -ForegroundColor Cyan
+
 try {
     while ($true) {
+        # Get the log file path for the current day
+        $logFilePath = Get-LogFilePath -logDirectory $logDirectory
+
+        # Create log file and write header if it doesn't exist
+        if (-not (Test-Path $logFilePath)) {
+            "Timestamp,Target,Success,Latency" | Out-File -FilePath $logFilePath -Encoding UTF8
+        }
+
         # Perform ping for primary target
         $pingOutputPrimary = ping $primaryTarget -n 1 | Select-String "Reply from" -Context 0, 0
-        
         # Get timestamp
         $timestamp = Get-Date
         $formattedTimestamp = $timestamp.ToString("yyyy-MM-dd HH:mm:ss")
-
         # Determine if primary ping succeeded or failed
         if ($pingOutputPrimary) {
             # Extract latency from the ping output
@@ -51,6 +75,13 @@ try {
                     Success   = $true
                     Latency   = $latencyPrimary
                 }
+                # Log primary ping result
+                [PSCustomObject]@{
+                    Timestamp = $formattedTimestamp
+                    Target    = $primaryTarget
+                    Success   = $true
+                    Latency   = $latencyPrimary
+                } | Export-Csv -Path $logFilePath -NoTypeInformation -Append
             } else {
                 $primaryStatus = "[$formattedTimestamp] Primary ($primaryTarget): Success, Latency=Unknown"
                 $successCountPrimary++
@@ -59,6 +90,13 @@ try {
                     Success   = $true
                     Latency   = $null
                 }
+                # Log primary ping result
+                [PSCustomObject]@{
+                    Timestamp = $formattedTimestamp
+                    Target    = $primaryTarget
+                    Success   = $true
+                    Latency   = $null
+                } | Export-Csv -Path $logFilePath -NoTypeInformation -Append
             }
         } else {
             $primaryStatus = "[$formattedTimestamp] Primary ($primaryTarget): Failed"
@@ -68,11 +106,17 @@ try {
                 Success   = $false
                 Latency   = $null
             }
+            # Log primary ping result
+            [PSCustomObject]@{
+                Timestamp = $formattedTimestamp
+                Target    = $primaryTarget
+                Success   = $false
+                Latency   = $null
+            } | Export-Csv -Path $logFilePath -NoTypeInformation -Append
         }
 
         # Perform ping for secondary target
         $pingOutputSecondary = ping $secondaryTarget -n 1 | Select-String "Reply from" -Context 0, 0
-
         # Determine if secondary ping succeeded or failed
         if ($pingOutputSecondary) {
             # Extract latency from the ping output
@@ -87,6 +131,13 @@ try {
                     Success   = $true
                     Latency   = $latencySecondary
                 }
+                # Log secondary ping result
+                [PSCustomObject]@{
+                    Timestamp = $formattedTimestamp
+                    Target    = $secondaryTarget
+                    Success   = $true
+                    Latency   = $latencySecondary
+                } | Export-Csv -Path $logFilePath -NoTypeInformation -Append
             } else {
                 $secondaryStatus = "Secondary ($secondaryTarget): Success, Latency=Unknown"
                 $successCountSecondary++
@@ -95,6 +146,13 @@ try {
                     Success   = $true
                     Latency   = $null
                 }
+                # Log secondary ping result
+                [PSCustomObject]@{
+                    Timestamp = $formattedTimestamp
+                    Target    = $secondaryTarget
+                    Success   = $true
+                    Latency   = $null
+                } | Export-Csv -Path $logFilePath -NoTypeInformation -Append
             }
         } else {
             $secondaryStatus = "Secondary ($secondaryTarget): Failed"
@@ -104,6 +162,13 @@ try {
                 Success   = $false
                 Latency   = $null
             }
+            # Log secondary ping result
+            [PSCustomObject]@{
+                Timestamp = $formattedTimestamp
+                Target    = $secondaryTarget
+                Success   = $false
+                Latency   = $null
+            } | Export-Csv -Path $logFilePath -NoTypeInformation -Append
         }
 
         # Combine primary and secondary statuses into one line with selective coloring
@@ -114,7 +179,6 @@ try {
             $primaryOutput = $primaryStatus
             $primaryColor = "Red"
         }
-
         if ($pingOutputSecondary) {
             $secondaryOutput = $secondaryStatus
             $secondaryColor = "Green"
@@ -208,51 +272,49 @@ try {
         # Summarize every 10 responses
         if ($totalPings % $summaryInterval -eq 0) {
             Write-Host "`n--- Summary after $totalPings pings ---" -ForegroundColor Yellow
-            
             # Header Row
             Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "Interval", "Primary (PL)", "Secondary (PL)", "Failed Pings", "Latency (ms)") -ForegroundColor Cyan
-            
             # 1 Minute
             $failed1MinPrimary = @($last1MinPrimary | Where-Object { -not $_.Success }).Count
             $failed1MinSecondary = @($last1MinSecondary | Where-Object { -not $_.Success }).Count
-            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "1 Min", 
-                "$packetLoss1MinPrimary%", "$packetLoss1MinSecondary%", 
-                "$failed1MinPrimary / $failed1MinSecondary", 
+            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "1 Min",
+                "$packetLoss1MinPrimary%", "$packetLoss1MinSecondary%",
+                "$failed1MinPrimary / $failed1MinSecondary",
                 "$avgLatency1MinPrimary ms / $avgLatency1MinSecondary ms") -ForegroundColor Green
             # 5 Minutes
             $failed5MinPrimary = @($last5MinPrimary | Where-Object { -not $_.Success }).Count
             $failed5MinSecondary = @($last5MinSecondary | Where-Object { -not $_.Success }).Count
-            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "5 Min", 
-                "$packetLoss5MinPrimary%", "$packetLoss5MinSecondary%", 
-                "$failed5MinPrimary / $failed5MinSecondary", 
+            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "5 Min",
+                "$packetLoss5MinPrimary%", "$packetLoss5MinSecondary%",
+                "$failed5MinPrimary / $failed5MinSecondary",
                 "$avgLatency5MinPrimary ms / $avgLatency5MinSecondary ms") -ForegroundColor Green
             # 10 Minutes
             $failed10MinPrimary = @($last10MinPrimary | Where-Object { -not $_.Success }).Count
             $failed10MinSecondary = @($last10MinSecondary | Where-Object { -not $_.Success }).Count
-            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "10 Min", 
-                "$packetLoss10MinPrimary%", "$packetLoss10MinSecondary%", 
-                "$failed10MinPrimary / $failed10MinSecondary", 
+            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "10 Min",
+                "$packetLoss10MinPrimary%", "$packetLoss10MinSecondary%",
+                "$failed10MinPrimary / $failed10MinSecondary",
                 "$avgLatency10MinPrimary ms / $avgLatency10MinSecondary ms") -ForegroundColor Green
             # 30 Minutes
             $failed30MinPrimary = @($last30MinPrimary | Where-Object { -not $_.Success }).Count
             $failed30MinSecondary = @($last30MinSecondary | Where-Object { -not $_.Success }).Count
-            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "30 Min", 
-                "$packetLoss30MinPrimary%", "$packetLoss30MinSecondary%", 
-                "$failed30MinPrimary / $failed30MinSecondary", 
+            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "30 Min",
+                "$packetLoss30MinPrimary%", "$packetLoss30MinSecondary%",
+                "$failed30MinPrimary / $failed30MinSecondary",
                 "$avgLatency30MinPrimary ms / $avgLatency30MinSecondary ms") -ForegroundColor Green
             # 60 Minutes
             $failed60MinPrimary = @($last60MinPrimary | Where-Object { -not $_.Success }).Count
             $failed60MinSecondary = @($last60MinSecondary | Where-Object { -not $_.Success }).Count
-            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "60 Min", 
-                "$packetLoss60MinPrimary%", "$packetLoss60MinSecondary%", 
-                "$failed60MinPrimary / $failed60MinSecondary", 
+            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "60 Min",
+                "$packetLoss60MinPrimary%", "$packetLoss60MinSecondary%",
+                "$failed60MinPrimary / $failed60MinSecondary",
                 "$avgLatency60MinPrimary ms / $avgLatency60MinSecondary ms") -ForegroundColor Green
             # Total
-            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "Total", 
-                "$packetLossTotalPrimary%", "$packetLossTotalSecondary%", 
-                "$failureCountPrimary / $failureCountSecondary", 
+            Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "Total",
+                "$packetLossTotalPrimary%", "$packetLossTotalSecondary%",
+                "$failureCountPrimary / $failureCountSecondary",
                 "$avgLatencyTotalPrimary ms / $avgLatencyTotalSecondary ms") -ForegroundColor Green
-            Write-Host "--------------------------------------`n" -ForegroundColor Yellow
+            Write-Host "	`n" -ForegroundColor Yellow
         }
 
         # Wait for a second before the next ping
@@ -267,48 +329,47 @@ try {
     $finalPacketLossTotalSecondary = if ($totalPings -gt 0) { [math]::Round(($failureCountSecondary / $totalPings) * 100, 2) } else { 0 }
     $finalAvgLatencyTotalSecondary = if ($successCountSecondary -gt 0) { [math]::Round($totalLatencySecondary / $successCountSecondary, 2) } else { 0 }
     Write-Host "`n--- Final Summary ---" -ForegroundColor Magenta
-    
     # Header Row
     Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "Interval", "Primary (PL)", "Secondary (PL)", "Failed Pings", "Latency (ms)") -ForegroundColor Cyan
     # 1 Minute
     $failed1MinPrimary = @($last1MinPrimary | Where-Object { -not $_.Success }).Count
     $failed1MinSecondary = @($last1MinSecondary | Where-Object { -not $_.Success }).Count
-    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "1 Min", 
-        "$packetLoss1MinPrimary%", "$packetLoss1MinSecondary%", 
-        "$failed1MinPrimary / $failed1MinSecondary", 
+    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "1 Min",
+        "$packetLoss1MinPrimary%", "$packetLoss1MinSecondary%",
+        "$failed1MinPrimary / $failed1MinSecondary",
         "$avgLatency1MinPrimary ms / $avgLatency1MinSecondary ms") -ForegroundColor Green
     # 5 Minutes
     $failed5MinPrimary = @($last5MinPrimary | Where-Object { -not $_.Success }).Count
     $failed5MinSecondary = @($last5MinSecondary | Where-Object { -not $_.Success }).Count
-    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "5 Min", 
-        "$packetLoss5MinPrimary%", "$packetLoss5MinSecondary%", 
-        "$failed5MinPrimary / $failed5MinSecondary", 
+    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "5 Min",
+        "$packetLoss5MinPrimary%", "$packetLoss5MinSecondary%",
+        "$failed5MinPrimary / $failed5MinSecondary",
         "$avgLatency5MinPrimary ms / $avgLatency5MinSecondary ms") -ForegroundColor Green
     # 10 Minutes
     $failed10MinPrimary = @($last10MinPrimary | Where-Object { -not $_.Success }).Count
     $failed10MinSecondary = @($last10MinSecondary | Where-Object { -not $_.Success }).Count
-    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "10 Min", 
-        "$packetLoss10MinPrimary%", "$packetLoss10MinSecondary%", 
-        "$failed10MinPrimary / $failed10MinSecondary", 
+    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "10 Min",
+        "$packetLoss10MinPrimary%", "$packetLoss10MinSecondary%",
+        "$failed10MinPrimary / $failed10MinSecondary",
         "$avgLatency10MinPrimary ms / $avgLatency10MinSecondary ms") -ForegroundColor Green
     # 30 Minutes
     $failed30MinPrimary = @($last30MinPrimary | Where-Object { -not $_.Success }).Count
     $failed30MinSecondary = @($last30MinSecondary | Where-Object { -not $_.Success }).Count
-    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "30 Min", 
-        "$packetLoss30MinPrimary%", "$packetLoss30MinSecondary%", 
-        "$failed30MinPrimary / $failed30MinSecondary", 
+    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "30 Min",
+        "$packetLoss30MinPrimary%", "$packetLoss30MinSecondary%",
+        "$failed30MinPrimary / $failed30MinSecondary",
         "$avgLatency30MinPrimary ms / $avgLatency30MinSecondary ms") -ForegroundColor Green
     # 60 Minutes
     $failed60MinPrimary = @($last60MinPrimary | Where-Object { -not $_.Success }).Count
     $failed60MinSecondary = @($last60MinSecondary | Where-Object { -not $_.Success }).Count
-    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "60 Min", 
-        "$packetLoss60MinPrimary%", "$packetLoss60MinSecondary%", 
-        "$failed60MinPrimary / $failed60MinSecondary", 
+    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "60 Min",
+        "$packetLoss60MinPrimary%", "$packetLoss60MinSecondary%",
+        "$failed60MinPrimary / $failed60MinSecondary",
         "$avgLatency60MinPrimary ms / $avgLatency60MinSecondary ms") -ForegroundColor Green
     # Total
-    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "Total", 
-        "$finalPacketLossTotalPrimary%", "$finalPacketLossTotalSecondary%", 
-        "$failureCountPrimary / $failureCountSecondary", 
+    Write-Host ("{0,-15} {1,-15} {2,-15} {3,-15} {4,-15}" -f "Total",
+        "$finalPacketLossTotalPrimary%", "$finalPacketLossTotalSecondary%",
+        "$failureCountPrimary / $failureCountSecondary",
         "$finalAvgLatencyTotalPrimary ms / $finalAvgLatencyTotalSecondary ms") -ForegroundColor Green
-    Write-Host "---------------------`n" -ForegroundColor Magenta
+    Write-Host "	`n" -ForegroundColor Magenta
 }
