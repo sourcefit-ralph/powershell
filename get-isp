@@ -1,0 +1,15 @@
+try {
+    # Query ipinfo.io to get JSON details about the current public IP
+    $ipInfo = Invoke-RestMethod -Uri "http://ipinfo.io/json"
+
+    # Check if the org (organization/ISP) field is available
+    if ($ipInfo.org) {
+        Write-Output "Your Internet Provider (ISP) is: $($ipInfo.org)"
+    }
+    else {
+        Write-Output "ISP information could not be determined."
+    }
+}
+catch {
+    Write-Output "An error occurred while retrieving ISP information: $_"
+}
